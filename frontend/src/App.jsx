@@ -45,11 +45,16 @@ export default function App() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
+      if (!res.ok || data.error || !data.salary_range) {
+        alert("Prediction failed: " + (data.error || "Server error — check Render logs."));
+        setLoading(false);
+        return;
+      }
       setResult(data);
       setStep(3);
       fetchHistory();
-    } catch {
-      alert("Could not connect to server. Make sure backend and Flask are running.");
+    } catch (err) {
+      alert("Could not connect to server: " + err.message);
     }
     setLoading(false);
   };
