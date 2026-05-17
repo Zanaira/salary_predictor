@@ -1,0 +1,10 @@
+# root .gitignore
+node_modules/
+.env
+*.pkl
+__pycache__/
+*.pyc
+ml-service/models/
+ml-service/dataset.csv
+dist/
+.DS_Store
