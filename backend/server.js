@@ -6,7 +6,6 @@ require("dotenv").config();
 
 const app = express();
 
-// ── CORS — must be before everything else ──────────────────────────────────
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -32,7 +31,7 @@ app.use(cors({
 }));
 
 // Handle preflight OPTIONS for all routes
-app.options("*", cors());
+app.options("/(.*)", cors());
 
 app.use(express.json());
 
