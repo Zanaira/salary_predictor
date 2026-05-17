@@ -30,12 +30,9 @@ app.use(cors({
   credentials: true,
 }));
 
-// Handle preflight OPTIONS for all routes
-app.options("/(.*)", cors());
-
 app.use(express.json());
 
-// ── MongoDB ────────────────────────────────────────────────────────────────
+
 mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/salarypredictor")
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
@@ -52,7 +49,7 @@ const predictionSchema = new mongoose.Schema({
 const Prediction = mongoose.model("Prediction", predictionSchema);
 const ML_API = process.env.ML_API || "http://localhost:5001";
 
-// ── Routes ─────────────────────────────────────────────────────────────────
+
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.get("/api/metrics", async (req, res) => {
