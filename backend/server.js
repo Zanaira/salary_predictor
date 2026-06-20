@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
+// ── CORS — must be before everything else ──────────────────────────────────
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -32,7 +33,7 @@ app.use(cors({
 
 app.use(express.json());
 
-
+// ── MongoDB ────────────────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/salarypredictor")
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
@@ -49,7 +50,7 @@ const predictionSchema = new mongoose.Schema({
 const Prediction = mongoose.model("Prediction", predictionSchema);
 const ML_API = process.env.ML_API || "http://localhost:5001";
 
-
+// ── Routes ─────────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.get("/api/metrics", async (req, res) => {
@@ -59,14 +60,51 @@ app.get("/api/metrics", async (req, res) => {
   } catch { res.status(500).json({ error: "ML service unavailable" }); }
 });
 
+// Calls Flask with one safe sequential retry on cold-start errors
+// (429 = rate limited while booting, 502/503 = service waking up)
+async function callMLApi(path, body) {
+  const RETRYABLE = [429, 502, 503];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await axios.post(`${ML_API}${path}`, body, { timeout: 40000 });
+    } catch (err) {
+      const status = err.response?.status;
+      if (attempt === 1 && RETRYABLE.includes(status)) {
+        console.log(`⏳ ML API returned ${status}, waiting 4s then retrying once...`);
+        await new Promise(r => setTimeout(r, 4000));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 app.post("/api/predict", async (req, res) => {
   try {
-    const { data } = await axios.post(`${ML_API}/predict`, req.body);
+    console.log("📨 Predict request body:", req.body);
+    console.log("📡 Calling ML_API:", `${ML_API}/predict`);
+
+    const { data } = await callMLApi("/predict", req.body);
+
+    console.log("✅ Flask responded:", data);
+
     await new Prediction({ ...req.body, ...data }).save();
     res.json(data);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Prediction failed" });
+    console.error("❌ PREDICT ERROR:");
+    console.error("  Message:", err.message);
+    if (err.response) {
+      console.error("  Flask status:", err.response.status);
+      console.error("  Flask data:", JSON.stringify(err.response.data));
+    } else if (err.request) {
+      console.error("  No response received from Flask (timeout or unreachable)");
+    } else {
+      console.error("  Error before request was even sent:", err.stack);
+    }
+    res.status(500).json({
+      error: "Prediction failed",
+      detail: err.response?.data?.error || err.message,
+    });
   }
 });
 
