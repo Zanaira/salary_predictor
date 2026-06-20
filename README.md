@@ -26,6 +26,8 @@ salary-predictor/
     └── package.json
 ```
 
+
+> ##I built a full-stack salary prediction system where users can compare 4 ML algorithms — KNN, Naive Bayes, SVM, and Neural Network — in real time. The MERN stack handles the UI, user history, and API routing, while a separate Flask microservice runs the trained models.
 ---
 
 ## 🚀 Setup & Run
@@ -97,6 +99,4 @@ Replace `train_models.py` synthetic data with the real Kaggle dataset:
 
 ---
 
-## 📌 For Your Portfolio
-When explaining this project, say:
-> "I built a full-stack salary prediction system where users can compare 4 ML algorithms — KNN, Naive Bayes, SVM, and Neural Network — in real time. The MERN stack handles the UI, user history, and API routing, while a separate Flask microservice runs the trained models."
+
