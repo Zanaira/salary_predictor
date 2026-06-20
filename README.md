@@ -2,6 +2,10 @@
 > MERN + Python/Flask ML project using KNN, Naive Bayes, SVM & Neural Network
 
 ---
+<img width="1127" height="596" alt="Screenshot 2026-06-21 020513" src="https://github.com/user-attachments/assets/44a50853-6690-49be-a26d-7fac571c72c8" />
+<img width="1127" height="600" alt="Screenshot 2026-06-21 020447" src="https://github.com/user-attachments/assets/36cda8cc-1d26-4bb7-a773-4b6fd6636b2b" />
+<img width="1125" height="600" alt="Screenshot 2026-06-21 020530" src="https://github.com/user-attachments/assets/305f6326-285a-4584-82b5-41460dea1d1b" />
+
 
 ## 📁 Project Structure
 ```
