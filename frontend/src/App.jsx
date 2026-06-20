@@ -26,6 +26,7 @@ export default function App() {
   const [metrics,    setMetrics]   = useState(null);
   const [history,    setHistory]   = useState([]);
   const [loading,    setLoading]   = useState(false);
+  const [waking,     setWaking]    = useState(false);
   const [pdfLoading, setPdfLoading]= useState(false);
   const [activeTab,  setActiveTab] = useState("predict");
 
@@ -37,26 +38,47 @@ export default function App() {
   const fetchHistory = () =>
     fetch(`${API}/history`).then(r => r.json()).then(setHistory).catch(() => {});
 
+  // Server may be asleep (free hosting tier) — retry once with a longer timeout
+  const fetchWithRetry = async (url, options, attempt = 1) => {
+    const controller = new AbortController();
+    const timeoutMs  = attempt === 1 ? 8000 : 45000; // short first try, long retry
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt === 1) {
+        setWaking(true);              // show "waking up server" message
+        return fetchWithRetry(url, options, 2);
+      }
+      throw err;
+    }
+  };
+
   const handlePredict = async () => {
     setLoading(true);
+    setWaking(false);
     try {
-      const res  = await fetch(`${API}/predict`, {
+      const res  = await fetchWithRetry(`${API}/predict`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok || data.error || !data.salary_range) {
         alert("Prediction failed: " + (data.error || "Server error — check Render logs."));
-        setLoading(false);
+        setLoading(false); setWaking(false);
         return;
       }
       setResult(data);
       setStep(3);
       fetchHistory();
     } catch (err) {
-      alert("Could not connect to server: " + err.message);
+      alert("Server is taking longer than usual to wake up. Please try again in a few seconds.");
     }
     setLoading(false);
+    setWaking(false);
   };
 
   const handleDownloadPDF = async () => {
@@ -215,7 +237,7 @@ export default function App() {
                   <button style={s.btnSecondary} onClick={() => setStep(1)}>← Back</button>
                   <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
                     onClick={handlePredict} disabled={loading}>
-                    {loading ? "Predicting..." : "🔮 Predict Salary"}
+                    {waking ? "⏳ Waking up server..." : loading ? "Predicting..." : "🔮 Predict Salary"}
                   </button>
                 </div>
               </div>
