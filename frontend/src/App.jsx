@@ -38,21 +38,24 @@ export default function App() {
   const fetchHistory = () =>
     fetch(`${API}/history`).then(r => r.json()).then(setHistory).catch(() => {});
 
-  // Server may be asleep (free hosting tier) — retry once with a longer timeout
-  const fetchWithRetry = async (url, options, attempt = 1) => {
+  // Server may be asleep (free hosting tier) — use one single attempt with a
+  // long timeout instead of firing a second duplicate POST (which overloads
+  // the single-worker Flask instance and causes 429/502 errors).
+  const fetchWithWakeup = async (url, options) => {
     const controller = new AbortController();
-    const timeoutMs  = attempt === 1 ? 8000 : 45000; // short first try, long retry
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), 45000); // 45s covers cold start
+
+    // Show "waking up" hint if it's taking longer than a normal request
+    const wakingHint = setTimeout(() => setWaking(true), 4000);
+
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timer);
+      clearTimeout(wakingHint);
       return res;
     } catch (err) {
       clearTimeout(timer);
-      if (attempt === 1) {
-        setWaking(true);              // show "waking up server" message
-        return fetchWithRetry(url, options, 2);
-      }
+      clearTimeout(wakingHint);
       throw err;
     }
   };
@@ -61,7 +64,7 @@ export default function App() {
     setLoading(true);
     setWaking(false);
     try {
-      const res  = await fetchWithRetry(`${API}/predict`, {
+      const res  = await fetchWithWakeup(`${API}/predict`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
